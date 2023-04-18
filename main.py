@@ -4,15 +4,31 @@ import math
 import pygame
 from os import listdir
 from os.path import isfile, join
-pygame.init()
+import requests
+import time
 
+
+
+
+pygame.init()
 pygame.display.set_caption("Platformer")
+pygame.font.init()
+
 
 WIDTH, HEIGHT = 1000, 800
 FPS = 60
 PLAYER_VEL = 5
 
 window = pygame.display.set_mode((WIDTH, HEIGHT))
+menu_run = True
+ 
+main_background = pygame.Surface((WIDTH, HEIGHT))
+main_background.fill((0, 0, 0))
+
+FONT = pygame.font.SysFont('comicsans', 30)
+
+
+
 
 def flip(sprites):
     return [pygame.transform.flip(sprite, True, False) for sprite in sprites]
@@ -45,14 +61,14 @@ def get_block(size):
     path = join("assets", "Terrain", "Terrain.png")
     image = pygame.image.load(path).convert_alpha()
     surface = pygame.Surface((size, size), pygame.SRCALPHA, 32)
-    rect = pygame.Rect(96, 64, size, size)
+    rect = pygame.Rect(96, 128, size, size)
     surface.blit(image, (0, 0), rect)
     return pygame.transform.scale2x(surface)
 
 class Player(pygame.sprite.Sprite):
     COLOR = (255, 0, 0)
     GRAVITY = 1
-    SPRITES = load_sprite_sheets("MainCharacters", "MaskDude", 32, 32, True)
+    SPRITES = load_sprite_sheets("MainCharacters", "VirtualGuy", 32, 32, True)
     ANIMATION_DELAY = 3
     
     def __init__(self, x, y, width, height):
@@ -210,7 +226,7 @@ def get_background(name):
     return tiles, image
 
 
-def draw(window, background, bg_image, player, objects, offset_x):
+def draw(window, background, bg_image, player, objects, offset_x, elapsed_time):
     for tile in background:
         window.blit(bg_image, tile)
 
@@ -218,6 +234,9 @@ def draw(window, background, bg_image, player, objects, offset_x):
         obj.draw(window, offset_x)
 
     player.draw(window, offset_x)
+
+    time_text = FONT.render(f"Time: {round(elapsed_time)}s", 1, "white")
+    window.blit(time_text, (10, 10))
     
     pygame.display.update()
 
@@ -270,31 +289,290 @@ def handle_move(player, objects):
             player.make_hit()
 
 
+
+# HOME SCREEN AND GAME RUN SCREENS
+def start_screen():
+    global menu_run
+    create_button = pygame.Rect(WIDTH // 3, HEIGHT // 3, 200, 50)
+    login_button = pygame.Rect(WIDTH // 3, HEIGHT // 2, 200, 50)
+    start_button = pygame.Rect(WIDTH // 3, HEIGHT // 1.5, 200, 50)
+
+    while menu_run:
+        Font = pygame.font.SysFont('comicsans', 40)
+        window.blit(main_background, dest=(0, 0))
+        game_title = Font.render("StarSide Jumpers", True, (180, 0, 255))
+        window.blit(game_title, dest=(WIDTH / 3.2, HEIGHT / 6))
+
+        # Create button
+        Font = pygame.font.SysFont('comicsans', 20)
+        pygame.draw.rect(window, (180, 0, 255), create_button)
+        create_text = Font.render("Create Account", True, (0, 0, 0))
+        window.blit(create_text, (create_button.x + 30, create_button.y + 10))
+
+        # Login button
+        Font = pygame.font.SysFont('comicsans', 20)
+        pygame.draw.rect(window, (180, 0, 255), login_button)
+        login_text = Font.render("Log In", True, (0, 0, 0))
+        window.blit(login_text, (login_button.x + 70, login_button.y + 10))
+
+        # Start button
+        Font = pygame.font.SysFont('comicsans', 20)
+        pygame.draw.rect(window, (180, 0, 255), start_button)
+        start_text = Font.render("Start Game", True, (0, 0, 0))
+        window.blit(start_text, (start_button.x + 50, start_button.y + 10))
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            # Create button clicked
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if create_button.collidepoint(event.pos):
+                    create_user()
+
+            # Login button clicked
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if login_button.collidepoint(event.pos):
+                    print("Log in button clicked")
+
+            # Start button clicked
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if start_button.collidepoint(event.pos):
+                    menu_run = False
+                    
+
+
+
+def create_user():
+    menu_run = True
+    input_rects = [pygame.Rect(WIDTH // 3, HEIGHT // 3, 400, 50), pygame.Rect(WIDTH // 3, HEIGHT // 2, 400, 50)]
+
+    input_active = [False, False]
+    input_texts = ['', '']
+    input_font = pygame.font.SysFont('comicsans', 40)
+    # create_account = ()
+
+    submit_button = pygame.Rect(WIDTH // 2 - 50, HEIGHT - 100, 150, 50)
+    submit_font = pygame.font.SysFont('comicsans', 30)
+
+ 
+    while menu_run:
+        window.blit(main_background, dest=(0, 0))
+
+        # Input field label text size
+        label_font = pygame.font.SysFont(None, 30)
+
+        #Input Boxes for Username and Password
+        for i, rect in enumerate(input_rects):
+            if input_active[i]:
+                color = (255, 255, 0)
+            else:
+                color = (255, 255, 255)
+            pygame.draw.rect(window, color, rect, 2)
+            text_surface = input_font.render(input_texts[i], True, (255, 255, 255))
+            window.blit(text_surface, (rect.x + 5, rect.y + 5))
+
+            if i == 0:
+                label_surface = label_font.render("Username:", True, (255, 255, 255))
+            elif i == 1:
+                label_surface = label_font.render("Password:", True, (255, 255, 255))
+            window.blit(label_surface, (rect.x - 100, rect.y))
+
+        # Submit
+        pygame.draw.rect(window, (180, 0, 255), submit_button)
+        submit_text = submit_font.render("Create", True, (0, 0, 0))
+        window.blit(submit_text, (submit_button.x + 20, submit_button.y + 10))
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+
+            # Input fields clicked
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                for i, rect in enumerate(input_rects):
+                    if rect.collidepoint(event.pos):
+                        input_active[i] = True
+                    else:
+                        input_active[i] = False
+
+            # Submit button clicked
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if submit_button.collidepoint(event.pos):
+                    username = input_texts[0]
+                    password = input_texts[1]
+                    print(username, password)
+
+                    # Exit create user loop
+                    menu_run = False
+
+            # Key inputs
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    input_active[0] = False
+                    input_active[1] = False
+                if input_active[0]:
+                    if event.key == pygame.K_BACKSPACE:
+                        input_texts[0] = input_texts[0][:-1]
+                    else:
+                        input_texts[0] += event.unicode
+                if input_active[1]:
+                    if event.key == pygame.K_BACKSPACE:
+                        input_texts[1] = input_texts[1][:-1]
+                    else:
+                        input_texts[1] += event.unicode
+
+    
+
+
+def username_screen():
+    pass
+
+
 def main(window):
     clock = pygame.time.Clock()
-    background, bg_image = get_background('Brown.png')
+    background, bg_image = get_background('bg.jpeg')
+
+    start_time = time.time()
+    elapsed_time = 0
 
     block_size = 96
 
     player = Player(100, 100, 50, 50)
-    fire = Fire(100, HEIGHT - block_size - 64, 16, 32)
+    fire = Fire(200, 352, 16, 32)
     fire.on()
     floor = [Block(i * block_size, HEIGHT - block_size, block_size)
               for i in range(-WIDTH // block_size, (WIDTH * 2) // block_size)]
-    objects = [*floor, Block(0, HEIGHT - block_size * 2, block_size), 
-               Block(block_size * 3, HEIGHT - block_size * 4, block_size), fire]
+    objects = [*floor, Block(0, HEIGHT - block_size * 2, block_size),
+            # Starting Platform Right Wall
+               Block(94, HEIGHT - block_size * 6, block_size),  
+               Block(188, HEIGHT - block_size * 6, block_size),  
+               Block(282, HEIGHT - block_size * 6, block_size),  
+               Block(376, HEIGHT - block_size * 6, block_size),  
+               Block(470, HEIGHT - block_size * 7, block_size),  
+               Block(470, HEIGHT - block_size * 8, block_size),  
+               Block(470, HEIGHT - block_size * 9, block_size),    
+               Block(470, HEIGHT - block_size * 10, block_size),    
+               Block(470, HEIGHT - block_size * 11, block_size),    
+               Block(282, HEIGHT - block_size * 8, block_size),  
+               Block(188, HEIGHT - block_size * 8, block_size),  
+               Block(94, HEIGHT - block_size * 8, block_size),  
+               Block(0, HEIGHT - block_size * 8, block_size),  
+               Block(0, HEIGHT - block_size * 9, block_size),  
+               Block(0, HEIGHT - block_size * 10, block_size),  
+               Block(0, HEIGHT - block_size * 11, block_size),  
+            # First Run
+               Block(-94, HEIGHT - block_size * 6, block_size),  
+               Block(-188, HEIGHT - block_size * 6, block_size),  
+               Block(-282, HEIGHT - block_size * 6, block_size),  
+               Block(-376, HEIGHT - block_size * 6, block_size),  
+               Block(-376, HEIGHT - block_size * 7, block_size),  
+               Block(-470, HEIGHT - block_size * 6, block_size),  
+               Block(-564, HEIGHT - block_size * 6, block_size),  
+               Block(-658, HEIGHT - block_size * 6, block_size),  
+               Block(-752, HEIGHT - block_size * 6, block_size),  
+               Block(-846, HEIGHT - block_size * 6, block_size),
+            # End Wall Left 
+               Block(-1034, HEIGHT - block_size * 2, block_size),  
+               Block(-1034, HEIGHT - block_size * 3, block_size),  
+               Block(-1034, HEIGHT - block_size * 4, block_size),  
+               Block(-1034, HEIGHT - block_size * 5, block_size),  
+               Block(-1034, HEIGHT - block_size * 6, block_size),  
+               Block(-1034, HEIGHT - block_size * 7, block_size),  
+               Block(-1034, HEIGHT - block_size * 8, block_size),  
+               Block(-1034, HEIGHT - block_size * 9, block_size),  
+               Block(-1034, HEIGHT - block_size * 10, block_size),
+            # Right Run
+               Block(-940, HEIGHT - block_size * 4, block_size),  
+               Block(-846, HEIGHT - block_size * 4, block_size),
+               Block(-752, HEIGHT - block_size * 4, block_size),
+            # 3 Stack  
+               Block(-470, HEIGHT - block_size * 2, block_size),  
+               Block(-376, HEIGHT - block_size * 2, block_size),  
+               Block(-423, HEIGHT - block_size * 3, block_size),  
+               Block(-517, HEIGHT - block_size * 5, block_size),  
+               Block(-517, HEIGHT - block_size * 6, block_size),  
+            # Starting Wall  
+               Block(0, HEIGHT - block_size * 4, block_size),  
+               Block(0, HEIGHT - block_size * 5, block_size),  
+               Block(0, HEIGHT - block_size * 6, block_size),     
+            # Near Fire L
+               Block(380, 416, block_size),
+               Block(194, 416, block_size),
+               Block(block_size * 3, HEIGHT - block_size * 4, block_size), 
+               fire, 
+            # Wall 1
+               Block(570, HEIGHT - block_size * 2, block_size),
+               Block(664, HEIGHT - block_size * 2, block_size),
+               Block(664, HEIGHT - block_size * 3, block_size),
+               Block(664, HEIGHT - block_size * 4, block_size),
+               Block(664, HEIGHT - block_size * 5, block_size),
+            # Pyrimad Level 1
+               Block(1122, HEIGHT - block_size * 2, block_size),
+               Block(1592, HEIGHT - block_size * 2, block_size),
+               Block(1592, HEIGHT - block_size * 3, block_size),
+            # P Stack 
+               Block(1686, HEIGHT - block_size * 2, block_size),
+               Block(1686, HEIGHT - block_size * 3, block_size),
+               Block(1686, HEIGHT - block_size * 4, block_size),
+               Block(1686, HEIGHT - block_size * 5, block_size),
+               Block(1686, HEIGHT - block_size * 6, block_size),
+               Block(1686, HEIGHT - block_size * 7, block_size),
+               Block(1874, HEIGHT - block_size * 2, block_size),
+               Block(1874, HEIGHT - block_size * 3, block_size),
+               Block(1874, HEIGHT - block_size * 4, block_size),
+               Block(1874, HEIGHT - block_size * 5, block_size),
+               Block(1874, HEIGHT - block_size * 6, block_size),
+               Block(1874, HEIGHT - block_size * 7, block_size),
+               Block(1874, HEIGHT - block_size * 8, block_size),
+               Block(1874, HEIGHT - block_size * 9, block_size),
+               Block(1874, HEIGHT - block_size * 10, block_size),
+               Block(1874, HEIGHT - block_size * 11, block_size),
+               Block(1874, HEIGHT - block_size * 12, block_size),
+            # Pyrimad Level 2
+               Block(1169, HEIGHT - block_size * 3, block_size),
+               Block(1357, HEIGHT - block_size * 3, block_size),
+            # Pyramid Level 3
+               Block(1357, HEIGHT - block_size * 4, block_size),
+            # Pyramid Level 4
+               Block(981, HEIGHT - block_size * 5, block_size),
+               Block(981, HEIGHT - block_size * 6, block_size),
+               Block(981, HEIGHT - block_size * 7, block_size),
+               Block(981, HEIGHT - block_size * 8, block_size),
+               Block(981, HEIGHT - block_size * 9, block_size),
+               Block(1075, HEIGHT - block_size * 5, block_size),
+               Block(1169, HEIGHT - block_size * 5, block_size),
+               Block(1263, HEIGHT - block_size * 5, block_size),
+               Block(1357, HEIGHT - block_size * 5, block_size),
+               Block(1451, HEIGHT - block_size * 5, block_size),
+            # Horizontal 2
+               Block(1169, HEIGHT - block_size * 7, block_size),
+               Block(1263, HEIGHT - block_size * 7, block_size),
+               Block(1357, HEIGHT - block_size * 7, block_size),
+               Block(1451, HEIGHT - block_size * 7, block_size),
+            #    Block(1263, HEIGHT - block_size * 7, block_size),
+               ]
+ 
     
     offset_x = 0
-    scroll_area_width = 200
+    scroll_area_width = 500
 
-    run = True
-    while run:
+    start_screen()
+    
+    while True:
         clock.tick(FPS)
+        current_time = time.time()
+        elapsed_time = current_time - start_time
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
-                break
+                pygame.quit()
+                quit()
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE and player.jump_count < 2:
@@ -303,14 +581,12 @@ def main(window):
         player.loop(FPS)
         fire.loop()
         handle_move(player, objects)
-        draw(window, background, bg_image, player, objects, offset_x)
+        draw(window, background, bg_image, player, objects, offset_x, elapsed_time)
 
         if ((player.rect.right - offset_x >= WIDTH - scroll_area_width) and player.x_vel > 0) or (
                 (player.rect.left - offset_x <= scroll_area_width) and player.x_vel < 0):
             offset_x += player.x_vel
 
-    pygame.quit()
-    quit()
 
 if __name__ == "__main__":
     main(window)
